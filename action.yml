@@ -1,0 +1,101 @@
+name: Godot Asset Store Release
+description: >-
+  Publish a new version archive to the Godot Asset Store
+  (store.godotengine.org), optionally submitting it for review.
+author: NodotProject
+branding:
+  icon: upload-cloud
+  color: blue
+
+inputs:
+  username:
+    description: Godot Asset Store account username. Pass via a secret.
+    required: true
+  password:
+    description: Godot Asset Store account password. Pass via a secret.
+    required: true
+  publisher:
+    description: Publisher slug (store.godotengine.org/publisher/<slug>/).
+    required: true
+  asset-slug:
+    description: Asset slug (the <slug> in /asset/<publisher>/<slug>/).
+    required: true
+  file:
+    description: Path to the version .zip archive to upload.
+    required: true
+  version:
+    description: Version name for this release, e.g. 1.2.3.
+    required: true
+  changelog:
+    description: Changelog text for this version.
+    required: false
+    default: ""
+  version-notes:
+    description: Extra notes shown on the version.
+    required: false
+    default: ""
+  min-godot-version:
+    description: Minimum supported Godot version (e.g. "4.3"). Defaults to Undefined.
+    required: false
+    default: Undefined
+  max-godot-version:
+    description: Maximum supported Godot version (e.g. "4.6"). Defaults to Undefined.
+    required: false
+    default: Undefined
+  stable:
+    description: Mark this version as stable (true/false).
+    required: false
+    default: "true"
+  submit-for-review:
+    description: Submit the asset for moderator review after a successful upload (true/false).
+    required: false
+    default: "false"
+  python-version:
+    description: Python version to set up for the release script.
+    required: false
+    default: "3.12"
+
+outputs:
+  queue-id:
+    description: The upload queue id returned by the store.
+    value: ${{ steps.release.outputs.queue-id }}
+  checksum:
+    description: Base64-encoded MD5 of the uploaded archive.
+    value: ${{ steps.release.outputs.checksum }}
+  size:
+    description: Size of the uploaded archive in bytes.
+    value: ${{ steps.release.outputs.size }}
+  submitted:
+    description: Whether the asset was submitted for review (true/false).
+    value: ${{ steps.release.outputs.submitted }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: python -m pip install --disable-pip-version-check -r "${{ github.action_path }}/requirements.txt"
+
+    - name: Upload version to the Godot Asset Store
+      id: release
+      shell: bash
+      env:
+        GODOT_STORE_USERNAME: ${{ inputs.username }}
+        GODOT_STORE_PASSWORD: ${{ inputs.password }}
+      run: |
+        python "${{ github.action_path }}/release.py" \
+          --publisher "${{ inputs.publisher }}" \
+          --asset "${{ inputs.asset-slug }}" \
+          --file "${{ inputs.file }}" \
+          --version "${{ inputs.version }}" \
+          --changelog "${{ inputs.changelog }}" \
+          --version-notes "${{ inputs.version-notes }}" \
+          --min-godot-version "${{ inputs.min-godot-version }}" \
+          --max-godot-version "${{ inputs.max-godot-version }}" \
+          --stable "${{ inputs.stable }}" \
+          --submit "${{ inputs.submit-for-review }}"

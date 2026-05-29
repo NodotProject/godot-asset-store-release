@@ -1,0 +1,56 @@
+# Example workflow: build a Godot addon/project zip and publish it to the
+# Godot Asset Store whenever a version tag (v*) is pushed.
+#
+# Copy this into your own project's .github/workflows/ and adjust the build
+# step + the asset coordinates. Store your credentials as repository secrets:
+#   GODOT_STORE_USERNAME, GODOT_STORE_PASSWORD
+name: Release to Godot Asset Store
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      submit-for-review:
+        description: Submit for review after upload
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Derive a clean version string from the tag (v1.2.3 -> 1.2.3).
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          ref="${GITHUB_REF_NAME}"
+          echo "version=${ref#v}" >> "$GITHUB_OUTPUT"
+
+      # Replace this with however your project produces its release archive.
+      # Here we just zip the addons/ folder.
+      - name: Build archive
+        shell: bash
+        run: |
+          zip -r release.zip addons/ -x '*.git*'
+
+      - name: Publish to the Godot Asset Store
+        uses: NodotProject/godot-asset-store-release@v1
+        with:
+          username: ${{ secrets.GODOT_STORE_USERNAME }}
+          password: ${{ secrets.GODOT_STORE_PASSWORD }}
+          publisher: your-publisher-slug
+          asset-slug: your-asset-slug
+          file: release.zip
+          version: ${{ steps.version.outputs.version }}
+          changelog: "Release ${{ github.ref_name }}"
+          min-godot-version: "4.3"
+          max-godot-version: "4.6"
+          stable: "true"
+          # Only auto-submit when triggered manually with the box ticked.
+          submit-for-review: ${{ github.event.inputs.submit-for-review || 'false' }}
