@@ -9,11 +9,24 @@ branding:
 
 inputs:
   username:
-    description: Godot Asset Store account username. Pass via a secret.
-    required: true
+    description: >-
+      Godot Asset Store account username. Pass via a secret. Required unless
+      session-cookie is provided.
+    required: false
+    default: ""
   password:
-    description: Godot Asset Store account password. Pass via a secret.
-    required: true
+    description: >-
+      Godot Asset Store account password. Pass via a secret. Required unless
+      session-cookie is provided.
+    required: false
+    default: ""
+  session-cookie:
+    description: >-
+      A pre-obtained store `session` cookie, used instead of username/password.
+      Recommended for CI, where the interactive Keycloak login (and any
+      captcha/2FA) can't run headlessly. Pass via a secret.
+    required: false
+    default: ""
   publisher:
     description: Publisher slug (store.godotengine.org/publisher/<slug>/).
     required: true
@@ -87,6 +100,7 @@ runs:
       env:
         GODOT_STORE_USERNAME: ${{ inputs.username }}
         GODOT_STORE_PASSWORD: ${{ inputs.password }}
+        GODOT_STORE_SESSION: ${{ inputs.session-cookie }}
       run: |
         python "${{ github.action_path }}/release.py" \
           --publisher "${{ inputs.publisher }}" \

@@ -30,9 +30,14 @@ S3 flow, and (optionally) submits the asset for moderator review — all from CI
 - The asset must already exist on the store (create it once via the web UI or
   the `store_create_asset` MCP tool). This action publishes **versions** to an
   existing asset; it does not create the listing.
-- Store credentials saved as repository secrets:
-  - `GODOT_STORE_USERNAME`
-  - `GODOT_STORE_PASSWORD`
+- Store credentials saved as repository secrets — **either**:
+  - `GODOT_STORE_USERNAME` + `GODOT_STORE_PASSWORD`, **or**
+  - `GODOT_STORE_SESSION` — a pre-obtained `session` cookie (recommended for
+    CI, since the interactive Keycloak login can't handle captcha/2FA
+    headlessly). Grab it from a logged-in browser, or from
+    `~/.config/godot-store-mcp/credentials.json` if you use
+    [godot-store-mcp](https://github.com/NodotProject/godot-store-mcp). Note
+    that session cookies expire, so this may need refreshing periodically.
 
 ## Usage
 
@@ -64,8 +69,9 @@ The asset coordinates come from its URL:
 
 | Input | Required | Default | Description |
 | --- | --- | --- | --- |
-| `username` | ✅ | — | Store account username (use a secret). |
-| `password` | ✅ | — | Store account password (use a secret). |
+| `username` | * | — | Store account username (use a secret). |
+| `password` | * | — | Store account password (use a secret). |
+| `session-cookie` | * | — | Pre-obtained `session` cookie; alternative to username/password (use a secret). |
 | `publisher` | ✅ | — | Publisher slug. |
 | `asset-slug` | ✅ | — | Asset slug. |
 | `file` | ✅ | — | Path to the version `.zip`. |
@@ -77,6 +83,8 @@ The asset coordinates come from its URL:
 | `stable` | | `"true"` | Mark the version as stable. |
 | `submit-for-review` | | `"false"` | Submit the asset for review after upload. |
 | `python-version` | | `"3.12"` | Python version used to run the script. |
+
+`*` Provide **either** `session-cookie` **or** both `username` and `password`.
 
 ## Outputs
 

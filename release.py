@@ -16,6 +16,9 @@ while the store is in beta.
 
 Credentials are read from the environment so they never appear in argv / logs:
     GODOT_STORE_USERNAME, GODOT_STORE_PASSWORD
+or, for CI where the interactive Keycloak flow is impractical, a pre-obtained
+Flask session cookie:
+    GODOT_STORE_SESSION
 """
 
 from __future__ import annotations
@@ -330,8 +333,13 @@ def main(argv: list[str] | None = None) -> int:
 
     username = args.username
     password = os.environ.get("GODOT_STORE_PASSWORD")
-    if not username or not password:
-        print("::error::GODOT_STORE_USERNAME and GODOT_STORE_PASSWORD must be set.", file=sys.stderr)
+    session_cookie = os.environ.get("GODOT_STORE_SESSION")
+    if not session_cookie and not (username and password):
+        print(
+            "::error::Provide either GODOT_STORE_SESSION (a session cookie) or "
+            "both GODOT_STORE_USERNAME and GODOT_STORE_PASSWORD.",
+            file=sys.stderr,
+        )
         return 2
 
     file_path = Path(args.file)
@@ -347,9 +355,16 @@ def main(argv: list[str] | None = None) -> int:
     headers = {"User-Agent": USER_AGENT, "Accept": "text/html, */*"}
     try:
         with httpx.Client(timeout=60.0, follow_redirects=True, headers=headers) as client:
-            print(f"Logging in as {username} …")
-            login(client, username, password)
-            print("Login OK.")
+            if session_cookie:
+                # Seed the pre-obtained Flask session cookie and skip the
+                # interactive Keycloak flow. Flask rotates `session` on every
+                # response; the client's cookie jar tracks the rotation.
+                client.cookies.set("session", session_cookie, domain=STORE_HOST, path="/")
+                print("Using GODOT_STORE_SESSION cookie (skipping interactive login).")
+            else:
+                print(f"Logging in as {username} …")
+                login(client, username, password)
+                print("Login OK.")
 
             print(f"Uploading {file_path.name} as version {args.version} to {args.publisher}/{args.asset} …")
             result = upload_version(
