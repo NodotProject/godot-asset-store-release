@@ -308,6 +308,17 @@ def _str2bool(v: str) -> bool:
     return str(v).strip().lower() in ("1", "true", "yes", "y", "on")
 
 
+def _normalize_godot_version(v: str) -> str:
+    """The store's min/max version selects expect values like 'Godot 4.3' or
+    'Undefined'. Accept bare versions ('4.3'), the prefixed form, or blank."""
+    v = (v or "").strip()
+    if not v or v.lower() == "undefined":
+        return "Undefined"
+    if v.lower().startswith("godot"):
+        return "Godot " + v[len("godot"):].strip()
+    return f"Godot {v}"
+
+
 def _write_output(key: str, value: str) -> None:
     out = os.environ.get("GITHUB_OUTPUT")
     if not out:
@@ -375,8 +386,8 @@ def main(argv: list[str] | None = None) -> int:
                 version_name=args.version,
                 changelog=args.changelog,
                 stable=stable,
-                min_godot_version=args.min_godot_version,
-                max_godot_version=args.max_godot_version,
+                min_godot_version=_normalize_godot_version(args.min_godot_version),
+                max_godot_version=_normalize_godot_version(args.max_godot_version),
                 version_notes=args.version_notes,
             )
             print(f"Upload committed (queue_id={result['queue_id']}, {result['size']} bytes).")
